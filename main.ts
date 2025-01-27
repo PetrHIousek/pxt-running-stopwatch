@@ -1,32 +1,34 @@
-let running = false
-let timeInSeconds = 0
+enum State {
+    ready,
+    running,
+    finish
+}
 
-basic.showString("Ready")
+radio.setGroup(69)
+let state: State = State.ready;
+let startTimestamp = 0
+basic.pause(100)
+Sensors.SetLightLevel()
 
-// Funkce pro měření času
-basic.forever(function () {
-    if (running) {
-        basic.pause(1000) // Čeká 1 sekundu
-        timeInSeconds++ // Počítá celé sekundy
-        whaleysans.showNumber(timeInSeconds) // Zobrazuje celé sekundy
+radio.onReceivedNumber(function (receivedNumber: number) {
+    if (receivedNumber == 0) {
+        if (state === State.ready) {
+            state = State.running
+            startTimestamp = input.runningTime()
+        }
     }
 })
-
-// Při stisku tlačítka A začnou stopky měřit
 input.onButtonPressed(Button.A, function () {
-    if (!running) {
-        running = true
-        timeInSeconds = 0 // Resetuje čas na začátku měření
+    Sensors.SetLightLevel()
+})
+
+Sensors.OnLightDrop(function () {
+    if (state === State.running) {
+        let elapsedTime = input.runningTime() - startTimestamp
+
+        radio.sendValue("elapsedTime", elapsedTime)
+        state = State.finish
+        basic.showNumber(elapsedTime)
     }
 })
 
-// Při stisku tlačítka B se stopky zastaví a ukážou čas
-input.onButtonPressed(Button.B, function () {
-    if (running) {
-        running = false
-        whaleysans.showNumber(timeInSeconds) // Zobrazení počtu sekund
-        basic.clearScreen()
-        basic.pause(1000)
-        basic.showString("sekund")
-    }
-})
